@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Timeout: 10 # Timeout for all Lambda functions in seconds
+
+Resources:
+  WeatherBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: weather-bucket
+      # Add other bucket properties as needed
+  WeatherFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: main # The binary file name after compilation; AWS Lambda invokes this handler
+      Runtime: go1.x
+      Architectures:
+        - x86_64
+      MemorySize: 128 # Adjust based on your function's needs
+      Policies:
+        - AWSLambdaBasicExecutionRole # Basic execution role for Lambda functions
+        - Version: '2012-10-17' # Policy to allow logs creation
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: arn:aws:logs:*:*:*
+        - Version: '2012-10-17' # Policy to allow access to the OpenWeather API if needed
+          Statement:
+            - Effect: Allow
+              Action: "execute-api:Invoke"
+              Resource: "*"
+      Environment: # Environment variables
+        Variables:
+          OPEN_WEATHER_API_KEY: "de235288a5f2a9fd5d865f75d2bec841"
+      Events:
+        WeatherApi:
+          Type: Api # Defines an API Gateway trigger
+          Properties:
+            Path: /weather
+            Method: post
+      CodeUri: src/handlers # Path to the directory containing your compiled Go binary and any other deployment package contents
+#  WeatherStack:
+#    Type: AWS::CloudFormation::Stack
+#    Properties:
+#      TemplateURL: ./template.yaml # Specify the location of the nested CloudFormation template
+#      Parameters:
+#        ServiceToken: !GetAtt WeatherFunction.Arn
+    # Add parameters if needed
+
+Outputs:
+  WeatherApi:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/weather/"
